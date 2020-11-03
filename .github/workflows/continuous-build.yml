@@ -66,3 +66,42 @@ jobs:
           tags: amazon/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: debug
+        run: docker images
+  build_publish_to_ecr:
+    name: Build and Publish Docker image to ECR
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        if: ${{ github.event_name == 'push' }}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, and tag image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: aws-xray-daemon
+          IMAGE_TAG: amazon/aws-xray-daemon:alpha
+        run: docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: debug
+        run: docker images
+
+      - name: Push image to Amazon ECR
+        if: ${{ github.event_name == 'push' }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: aws-xray-daemon
+          IMAGE_TAG: amazon/aws-xray-daemon:alpha
+        run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
