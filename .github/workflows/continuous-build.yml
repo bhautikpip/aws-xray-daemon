@@ -82,7 +82,8 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
   test_arm64:
     name: test daemon on arm64
-    runs-on: [self-hosted, linux, ARM64]
+    needs: build_docker
+    runs-on: [ubuntu-latest, ARM64]
 
     steps:
       - name: Set up QEMU
