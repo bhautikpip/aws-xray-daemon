@@ -103,10 +103,13 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
 
-#      - name: debug
-#        run: |
-#          docker images
-#          docker image inspect amazon/aws-xray-daemon:alpha
+      - name: pull image from ecr
+        run: docker pull ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
+
+      - name: debug
+        run: |
+          docker images
+          docker image inspect amazon/aws-xray-daemon:alpha
 #
 #
 #
