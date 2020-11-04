@@ -76,9 +76,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -94,14 +91,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
+        run: |
+          docker buildx create --name xray-daemon-builder --use
+          docker buildx inspect --bootstrap
+          docker buildx build --progress plain --platform linux/amd64,linux/arm64 -t ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha --push .
 
       - name: pull image from ecr
         run: docker pull ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
@@ -109,10 +102,10 @@ jobs:
       - name: debug
         run: |
           docker images
+          docker buildx imagetools inspect ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
           docker image inspect ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
-#
-#
-#
+
+
 #      - name: Build, and tag image
 #        env:
 #          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
