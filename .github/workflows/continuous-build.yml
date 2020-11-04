@@ -34,92 +34,97 @@ jobs:
 #        run: go test -cover ./...
 #      - name: Build daemon
 #        run: go build ./cmd/tracing
-  build_docker:
-    name: Build Docker image
+#  build_docker:
+#    name: Build Docker image
 #    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v2
 #      - name: Login to DockerHub
 #        if: ${{ github.event_name == 'push' }}
 #        uses: docker/login-action@v1
 #        with:
 #          username: ${{ secrets.DOCKER_USER }}
 #          password: ${{ secrets.DOCKER_PASS }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Cache Docker layers
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-      - name: Build docker image
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: amazon/aws-xray-daemon:alpha
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-#  build_publish_to_ecr:
-#    name: Build and Publish Docker image to ECR
-##    needs: build
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout Repository
-#        uses: actions/checkout@v2
-#
-##      - name: Configure AWS credentials
-##        uses: aws-actions/configure-aws-credentials@v1
-##        with:
-##          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-##          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-##          aws-region: us-west-2
-#
 #      - name: Set up QEMU
 #        uses: docker/setup-qemu-action@v1
-#
 #      - name: Set up Docker Buildx
 #        uses: docker/setup-buildx-action@v1
-#
+#      - name: Cache Docker layers
+#        uses: actions/cache@v2
+#        with:
+#          path: /tmp/.buildx-cache
+#          key: ${{ runner.os }}-buildx-${{ github.sha }}
+#          restore-keys: |
+#            ${{ runner.os }}-buildx-
 #      - name: Build docker image
 #        uses: docker/build-push-action@v2
 #        with:
-#          context: .
-#          file: ./Dockerfile
-#          load: true
+#          push: true
 #          platforms: linux/amd64,linux/arm64
 #          tags: amazon/aws-xray-daemon:alpha
-#
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
+#      - name: debug
+#        run: docker images
+  build_publish_to_ecr:
+    name: Build and Publish Docker image to ECR
+#    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
+
 #      - name: debug
 #        run: |
 #          docker images
 #          docker image inspect amazon/aws-xray-daemon:alpha
 #
-##      - name: Login to Amazon ECR
-##        id: login-ecr
-##        uses: aws-actions/amazon-ecr-login@v1
-##
-##      - name: Build, and tag image
-##        env:
-##          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-##          ECR_REPOSITORY: amazon/aws-xray-daemon
-##          IMAGE_TAG: latest
-##        run: docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --load .
-##
-##      - name: debug
-##        run: |
-##          docker images
-##          docker info
-##
-##      - name: Push image to Amazon ECR
-##        env:
-##          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-##          ECR_REPOSITORY: amazon/aws-xray-daemon
-##          IMAGE_TAG: latest
-##        run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+#
+#
+#      - name: Build, and tag image
+#        env:
+#          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#          ECR_REPOSITORY: amazon/aws-xray-daemon
+#          IMAGE_TAG: latest
+#        run: docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --load .
+#
+#      - name: debug
+#        run: |
+#          docker images
+#          docker info
+#
+#      - name: Push image to Amazon ECR
+#        env:
+#          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#          ECR_REPOSITORY: amazon/aws-xray-daemon
+#          IMAGE_TAG: latest
+#        run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
